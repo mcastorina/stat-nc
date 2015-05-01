@@ -1,11 +1,10 @@
 #define _BSD_SOURCE
 
-#include <stdio.h>
 #include <locale.h>
 #include <stdlib.h>
 #include <ncurses.h>
 #include <unistd.h>
-#include <time.h>
+#include "nc_window.h"
 
 #define EXIT   (-1)
 
@@ -27,25 +26,23 @@ void win_resize(WINDOW *, int new_y, int new_x);
 
 
 int main(int argc, char **argv) {
-    int new_x, new_y;
+    // int new_x, new_y;
+    int i;
+    nc_window wins[3];
+
     setlocale(LC_ALL, "");
     start_curses();
-
-    WINDOW *win = newwin(parent_y, parent_x, 0, 0);
+    ncw_init(&wins[0], 0, 0, parent_y/2, parent_x, NC_BORDER_THIN, NULL, 0);
+    ncw_init(&wins[1], parent_y/2, 0, parent_y/2, parent_x, NC_BORDER_THIN, NULL, 0);
+    ncw_init(&wins[2], parent_y/4, parent_x/2-2, parent_y/2, 4, NC_BORDER_THICK, NULL, 0);
 
     timeout(25);
     while (true) {
 
-        getmaxyx(stdscr, new_y, new_x);
-        if (new_y != parent_y || new_x != parent_x) {
-            win_resize(win, new_y, new_x);
-            parent_y = new_y;
-            parent_x = new_x;
+        for (i = 0; i < 3; i++) {
+            ncw_draw(&wins[i]);
+            wrefresh(wins[i].win);
         }
-
-
-        win_border(win);
-        wrefresh(win);
 
         int ch = getch();
         if (ch != ERR) {
@@ -61,7 +58,6 @@ int main(int argc, char **argv) {
 int process_input(char c) {
     if (c == 'q')
         return EXIT;
-    addch(c);
     return 0;
 }
 void win_resize(WINDOW *win, int new_y, int new_x) {
@@ -69,25 +65,6 @@ void win_resize(WINDOW *win, int new_y, int new_x) {
 
     wclear(stdscr);
     wclear(win);
-}
-void win_border(WINDOW *screen) {
-    int x, y, i;
-
-    getmaxyx(screen, y, x);
-
-    mvwprintw(screen, 0, 0, "\u250c");
-    mvwprintw(screen, y-1, 0, "\u2514");
-    mvwprintw(screen, 0, x-1, "\u2510");
-    mvwprintw(screen, y-1, x-1, "\u2518");
-
-    for (i = 1; i < x-1; i++) {
-        mvwprintw(screen, 0, i, "\u2500");
-        mvwprintw(screen, y-1, i, "\u2500");
-    }
-    for (i = 1; i < y-1; i++) {
-        mvwprintw(screen, i, 0, "\u2502");
-        mvwprintw(screen, i, x-1, "\u2502");
-    }
 }
 void end_curses() {
     if (curses_started && !isendwin())
@@ -103,6 +80,8 @@ void start_curses() {
         intrflush(stdscr, false);
         keypad(stdscr, true);
         curs_set(0);
+        start_color();
+        use_default_colors();
         atexit(end_curses);
         curses_started = true;
     }

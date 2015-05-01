@@ -1,4 +1,4 @@
-stat-c
+stat-nc
 
 
 A simple program to display system status in a nice curses display.
