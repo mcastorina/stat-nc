@@ -1,6 +1,6 @@
 CC=gcc
 LDFLAGS=-lncursesw
-CFLAGS=-Wall -std=c99
+CFLAGS=-Wall -std=c99 -g
 
 all: main
 main: nc_window.o
