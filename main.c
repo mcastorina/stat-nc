@@ -23,9 +23,9 @@ int main(int argc, char **argv) {
 
     setlocale(LC_ALL, "");
     start_curses();
-    ncw_init(&wins[0], 0, 0, 50, 100, NC_BORDER_THIN, NULL, 0);
-    ncw_init(&wins[1], 50, 0, 50, 100, NC_BORDER_THIN, NULL, 0);
-    ncw_init(&wins[2], 25, 48, 50, 4, NC_BORDER_THICK, NULL, 0);
+    ncw_init(&wins[0], 0, 0, false, 50, 100, false, NC_BORDER_THIN, NULL, 0);
+    ncw_init(&wins[1], 50, 0, false, 50, 100, false, NC_BORDER_THIN, NULL, 0);
+    ncw_init(&wins[2], 1, 1, true, 3, 30, true, NC_BORDER_THICK, NULL, 0);
 
     timeout(25);
     while (true) {
@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
             if (ret == EXIT)
                 break;
         }
-        usleep(20);
+        usleep(10000);      // ~100 Hz
     }
     return 0;
 }

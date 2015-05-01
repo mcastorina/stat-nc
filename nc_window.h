@@ -16,9 +16,16 @@
 #define NC_BORDER_N     (6)
 #define NC_BORDER_THIN  (7)
 #define NC_BORDER_THICK (8)
+#define NC_BORDER_DBL   (9)
+#define NC_BORDER_DSH   (10)
 
 #define NC_MAX_DATA_SIZE    (1024)
 #define NC_MAX_ARR_LEN      (32)
+
+
+#define NCW_FIXED_POS(p)    (p->fixed & 0x1)
+#define NCW_FIXED_SIZE(p)   (p->fixed & 0x2)
+
 
 extern uint32_t NC_PARENT_Y, NC_PARENT_X;   /* Dimensions of stdscr */
 extern uint32_t NC_WIN_RES;                 /* Set in nc_update() if stdscr changed size */
@@ -36,8 +43,11 @@ typedef struct nc_data {
 typedef struct nc_window {
     WINDOW *win;                /* Ncurses window */
     int border;                 /* Type of border */
-    uint32_t pos_y, pos_x;      /* Position of window in percentage */
-    uint32_t size_y, size_x;    /* Size of window in percentage */
+    uint32_t pos_y, pos_x;      /* Position of window */
+    uint32_t size_y, size_x;    /* Size of window */
+    int fixed;                  /* Whether position / size is fixed */
+                                    /* Bit 0 is set if position is fixed */
+                                    /* Bit 1 is set if size is fixed */
     nc_data **data;             /* Array of nc_data objects */
     size_t data_size;           /* Length of data array */
 } nc_window;
@@ -65,18 +75,20 @@ int ncd_init(nc_data *p,
 
 /*=Initializes nc_window object=============================================*/
 /*      nc_window *p            Pointer to nc_window object                 */
-/*      uint32_t pos_y          Y position of window in percentage of stdscr*/
-/*      uint32_t pos_x          X position of window in percentage of stdscr*/
-/*      uint32_t size_y         Y rows of window in percentage of stdscr    */
-/*      uint32_t size_x         X cols of window in percentage of stdscr    */
+/*      uint32_t pos_y          Y position of window                        */
+/*      uint32_t pos_x          X position of window                        */
+/*      int fixed_pos           Whether the position is percentage or fixed */
+/*      uint32_t size_y         Y rows of window                            */
+/*      uint32_t size_x         X cols of window                            */
+/*      int fixed_size          Whether the size is percentage or fixed     */
 /*      int border              Border type of window                       */
 /*      nc_data **data          Array of nc_data objects                    */
 /*      size_t data_size        Size of data array                          */
 /*      Returns 0 on success                                                */
 /*==========================================================================*/
 int ncw_init(nc_window *p,
-             uint32_t pos_y, uint32_t pos_x,
-             uint32_t size_y, uint32_t size_x,
+             uint32_t pos_y, uint32_t pos_x, int fixed_pos,
+             uint32_t size_y, uint32_t size_x, int fixed_size,
              int border,
              nc_data **data, size_t data_size);
 
