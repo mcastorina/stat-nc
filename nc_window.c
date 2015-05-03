@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#define HAS_BORDER(p)   (p->border == NC_BORDER_N ? 0 : 1)
+
 uint32_t NC_PARENT_Y, NC_PARENT_X, NC_WIN_RES;
 
 int ncd_init(nc_data *p,
@@ -132,7 +134,7 @@ int ncw_resize(nc_window *p) {
 }
 
 int ncw_draw(nc_window *p) {
-    int i;
+    int i, k;
     int win_y, win_x;   /* Max window dimensions */
     getmaxyx(p->win, win_y, win_x);
 
@@ -143,7 +145,6 @@ int ncw_draw(nc_window *p) {
             char str[d->size+1];
             char *token;
             int num_lines = 0;
-            int k;
 
             /* Wrote my own strncpy to count num_lines at the same time */
             for (k = 0; k < d->size; k++) {
@@ -165,23 +166,24 @@ int ncw_draw(nc_window *p) {
                 /* This chunk is setting up y and x at the right position */
                 if (!NC_FIXED_POS(d)) {
                     if (NC_VERT_JUST(d)) {
-                        y = win_y - num_lines - 2;
+                        y = win_y - num_lines - 1 - HAS_BORDER(p);
                         if (d->vert_type == NC_CENTER) {
                             y = y/2;
                         }
                         else if (d->vert_type == NC_LEFT) {
-                            y = 1;
+                            y = HAS_BORDER(p);
                         }
                         y += k;
                     } else {    // percent
                         y = win_y*d->pos_y/100 + k;
                     }
                     if (NC_HORZ_JUST(d)) {
-                        x = win_x - strlen(token) - 1;
+                        x = win_x - strlen(token) - HAS_BORDER(p);
                         if (d->horz_type == NC_CENTER) {
                             x = x/2;
-                        } else if (d->horz_type == NC_LEFT) {
-                            x = 1;
+                        }
+                        else if (d->horz_type == NC_LEFT) {
+                            x = HAS_BORDER(p);
                         }
                     } else {    // percent
                         x = win_x*d->pos_x/100;
@@ -204,6 +206,103 @@ int ncw_draw(nc_window *p) {
                 }
                 token = strtok(NULL, "\n");
                 k++;
+            }
+        }
+        else if (abs(d->type) == NC_VERT || abs(d->type) == NC_HORZ) {
+            int y, x;
+            int size_y, size_x;
+            char block, space;
+
+            block = '#';
+            space = ' ';
+
+            /* This chunk is setting up size_y and size_x */
+            size_y = d->size_y;
+            size_x = d->size_x;
+            if (!NC_FIXED_SIZE(d)) {
+                size_y = win_y*d->size_y/100;
+                size_x = win_x*d->size_x/100;
+            }
+
+            /* This chunk is setting up y and x at the right position */
+            y = d->pos_y;
+            x = d->pos_x;
+            if (!NC_FIXED_POS(d)) {
+                if (NC_VERT_JUST(d)) {
+                    y = win_y - size_y - HAS_BORDER(p);
+                    if (d->vert_type == NC_CENTER) {
+                        y = y/2;
+                    }
+                    else if (d->vert_type == NC_LEFT) {
+                        y = HAS_BORDER(p);
+                    }
+                } else {    // percent
+                    y = win_y*d->pos_y/100;
+                }
+                if (NC_HORZ_JUST(d)) {
+                    x = win_x - size_x - HAS_BORDER(p);
+                    if (d->horz_type == NC_CENTER) {
+                        x = x/2;
+                    }
+                    else if (d->horz_type == NC_LEFT) {
+                        x = HAS_BORDER(p);
+                    }
+                } else {    // percent
+                    x = win_x*d->pos_x/100;
+                }
+            }
+
+            /* Fix after finding position and size */
+            y = (y < 0 ? HAS_BORDER(p) : y);
+            x = (x < 0 ? HAS_BORDER(p) : x);
+            size_y = (y + size_y > win_y) ? win_y - y - HAS_BORDER(p) : size_y;
+            size_x = (x + size_x > win_x) ? win_x - x - HAS_BORDER(p) : size_x;
+
+            /* Laziness */
+            if (abs(d->type) == NC_VERT) {
+                for (i = 1; i < size_y-1; i++) {
+                    wmove(p->win, (d->type == NC_VERT) ? y+i : y+size_y-1-i, x+1);
+                    for (k = 0; k < size_x-2; k++) {
+                        if (size_y-i-2 < (*(int *)d->data)*size_y/100)
+                            //wprintw(p->win, "\u2500");
+                            waddch(p->win, block);
+                        else
+                            waddch(p->win, space);
+                    }
+                }
+            }
+            else {
+                for (i = 1; i < size_y-1; i++) {
+                    wmove(p->win, y+i, x+1);
+                    for (k = 0; k < size_x-2; k++) {
+                        if (d->type == NC_HORZ ? k < (*(int *)d->data)*size_x/100 :
+                                                 size_x-k-2 < (*(int *)d->data)*size_x/100)
+                            //wprintw(p->win, "\u2500");
+                            waddch(p->win, block);
+                        else
+                            waddch(p->win, space);
+                    }
+                }
+            }
+
+            /* Corners */
+            mvwprintw(p->win, y, x, "\u250c");
+            mvwprintw(p->win, y+size_y-1, x, "\u2514");
+            mvwprintw(p->win, y, x+size_x-1, "\u2510");
+            mvwprintw(p->win, y+size_y-1, x+size_x-1, "\u2518");
+
+            /* Lines */
+            if (abs(d->type) == NC_VERT) {
+                for (k = 1; k < size_x-1; k++) {
+                    mvwprintw(p->win, y, x+k, "\u2500");
+                    mvwprintw(p->win, y+size_y-1, x+k, "\u2500");
+                }
+            }
+            else {
+                for (k = 1; k < size_y-1; k++) {
+                    mvwprintw(p->win, y+k, x, "\u2502");
+                    mvwprintw(p->win, y+k, x+size_x-1, "\u2502");
+                }
             }
         }
     }

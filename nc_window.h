@@ -40,6 +40,7 @@ typedef struct nc_data {
     uint32_t pos_y, pos_x;      /* Position of data */
                                     /* Presedence: fixed, justified, percent */
     uint32_t size_y, size_x;    /* Size of data */
+                                    /* Currently only used for bars */
     int fixed;                  /* Whether position / size is fixed */
                                     /* Bit 0 is set if position is fixed */
                                     /* Bit 1 is set if size is fixed */

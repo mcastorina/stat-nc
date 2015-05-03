@@ -50,11 +50,12 @@ int main(int argc, char **argv) {
   ##'                     '## \n\
  #'                         `#";
     char *data5 = ":)";
+    int data6 = 100;
     nc_window wins[3];
 
     setlocale(LC_ALL, "");
     start_curses();
-    ncw_init(&wins[0], 0, 0, false, 50, 100, false, NC_BORDER_THIN);
+    ncw_init(&wins[0], 0, 0, false, 50, 100, false, NC_BORDER_N);
     ncw_init(&wins[1], 50, 0, false, 50, 100, false, NC_BORDER_THIN);
     ncw_init(&wins[2], 1, 1, true, 4, 30, true, NC_BORDER_THICK);
     ncw_add_data(&wins[2], (void *)&data1, strlen(data1),
@@ -67,8 +68,12 @@ int main(int argc, char **argv) {
                  5, 20, false, 0, 0, false, NC_CENTER, NC_CENTER, NC_STRING_T);
     ncw_add_data(&wins[0], (void *)&data5, strlen(data5),
                  80, 80, false, 0, 0, false, -1, -1, NC_STRING);
+    ncw_add_data(&wins[0], (void *)&data6, sizeof(data6),
+                 10, 50, false, 22, 6, true, NC_RIGHT, NC_RIGHT, NC_VERT);
+    ncw_add_data(&wins[1], (void *)&data6, sizeof(data6),
+                 10, 50, false, 6, 40, true, NC_LEFT, NC_RIGHT, NC_HORZ);
 
-    timeout(25);
+    timeout(20);    // ~50 Hz
     int count = 0;
     while (true) {
 
@@ -92,12 +97,13 @@ int main(int argc, char **argv) {
             if (ret == EXIT)
                 break;
         }
-        usleep(10000);      // ~100 Hz
-        if (count++ > 20) {
+
+        if (count++ > 50) {
             char *tmp = data1;
             data1 = data2;
             data2 = tmp;
             count = 0;
+            data6 = (data6 + 5)%105;
         }
     }
     return 0;
