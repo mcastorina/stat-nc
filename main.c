@@ -31,47 +31,43 @@ int main(int argc, char **argv) {
 /_/   \\_\\_|  \\___|_| |_|_____|_|_| |_|\\__,_/_/\\_\\";
 
     char *data4 = "\
-               +              \n\
-               #              \n\
-              ###             \n\
-             #####            \n\
-             ######           \n\
-            ; #####;          \n\
-           +##.#####          \n\
-          +##########         \n\
-         #############;       \n\
-        ###############+      \n\
-       #######   #######      \n\
-     .######;     ;###;`\\\".   \n\
-    .#######;     ;#####.     \n\
-    #########.   .########`   \n\
-   ######'           '######  \n\
-  ;####                 ####; \n\
-  ##'                     '## \n\
- #'                         `#";
-    char *data5 = ":)";
-    int data6 = 100;
-    nc_window wins[3];
+              +              \n\
+              #              \n\
+             ###             \n\
+            #####            \n\
+            ######           \n\
+           ; #####;          \n\
+          +##.#####          \n\
+         +##########         \n\
+        #############;       \n\
+       ###############+      \n\
+      #######   #######      \n\
+    .######;     ;###;`\\\".   \n\
+   .#######;     ;#####.     \n\
+   #########.   .########`   \n\
+  ######'           '######  \n\
+ ;####                 ####; \n\
+ ##'                     '## \n\
+#'                         `#";
+    int data5 = 100;
+    int num_win = 2;
+    nc_window wins[num_win];
 
     setlocale(LC_ALL, "");
     start_curses();
-    ncw_init(&wins[0], 0, 0, false, 50, 100, false, NC_BORDER_N);
-    ncw_init(&wins[1], 50, 0, false, 50, 100, false, NC_BORDER_THIN);
-    ncw_init(&wins[2], 1, 1, true, 4, 30, true, NC_BORDER_THICK);
-    ncw_add_data(&wins[2], (void *)&data1, strlen(data1),
-                 1, 1, true, 0, 0, true, 0, 0, NC_STRING);
-    ncw_add_data(&wins[2], (void *)&data2, strlen(data2),
-                 2, 1, true, 0, 0, true, 0, 0, NC_STRING);
+
+    ncw_init(&wins[0], 0, 0, 50, 100, NCW_BORDER_THN);
+    ncw_init(&wins[1], 50, 0, 50, 100, NCW_BORDER_N);
+
+    ncw_add_data(&wins[0], (void *)&data1, strlen(data1),
+                 1, 1, 1, strlen(data1),
+                 NC_BOTTOM | NC_LEFT | NC_FIXS_Y | NC_FIXS_X | NCD_STRING);
     ncw_add_data(&wins[1], (void *)&data4, strlen(data4),
-                 1, 1, false, 0, 0, false, NC_CENTER, NC_LEFT, NC_STRING);
+                 0, 0, 18, 29,
+                 NC_LEFT | NC_TOP | NC_FIXS_X | NC_FIXS_Y | NCD_STRING);
     ncw_add_data(&wins[1], (void *)&data3, strlen(data3),
-                 5, 20, false, 0, 0, false, NC_CENTER, NC_CENTER, NC_STRING_T);
-    ncw_add_data(&wins[0], (void *)&data5, strlen(data5),
-                 80, 80, false, 0, 0, false, -1, -1, NC_STRING);
-    ncw_add_data(&wins[0], (void *)&data6, sizeof(data6),
-                 10, 50, false, 22, 6, true, NC_RIGHT, NC_RIGHT, NC_VERT);
-    ncw_add_data(&wins[1], (void *)&data6, sizeof(data6),
-                 10, 50, false, 6, 40, true, NC_LEFT, NC_RIGHT, NC_HORZ);
+                 10, 20, 6, 49,
+                 NC_CENTER_Y | NC_CENTER_X | NC_FIXS_X | NC_FIXS_Y | NCD_TSTRING);
 
     timeout(20);    // ~50 Hz
     int count = 0;
@@ -79,14 +75,14 @@ int main(int argc, char **argv) {
 
         if (ncw_update()) {
             if (NC_WIN_RES) {
-                for (i = 0; i < 3; i++) {
+                for (i = 0; i < num_win; i++) {
                     ncw_resize(&wins[i]);
                 }
                 NC_WIN_RES &= 0;
             }
         }
 
-        for (i = 0; i < 3; i++) {
+        for (i = 0; i < num_win; i++) {
             ncw_draw(&wins[i]);
             wrefresh(wins[i].win);
         }
@@ -103,7 +99,7 @@ int main(int argc, char **argv) {
             data1 = data2;
             data2 = tmp;
             count = 0;
-            data6 = (data6 + 5)%105;
+            data5 = (data5 + 5)%105;
         }
     }
     return 0;
