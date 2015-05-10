@@ -30,11 +30,10 @@
 #define NCD_STRING      (0x100)     // String type
 #define NCD_TSTRING     (0x200)     // Transparent string type
 #define NCD_BAR         (0x300)     // Bar type
-#define NCD_BV_Y        (0x400)     // Bar vector Y
-#define NCD_BV_X        (0x800)     // Bar vector X
-                                        // Vectors mean the following:
-                                             // 0: grow increasingly
-                                             // 1: grow decreasingly
+#define NCD_B_LR        (0xc00)     // Grow left to right
+#define NCD_B_RL        (0x800)     // Grow right to left
+#define NCD_B_TB        (0x400)     // Grow top to bottom
+#define NCD_B_BT        (0x000)     // Grow bottom to top
 #define NCD_BB_Y        (0x1000)    // Bracket around bar in Y
 #define NCD_BB_X        (0x2000)    // Bracket around bar in X
 
@@ -62,11 +61,13 @@
 #define JUST_Y(p)           (p->flags & 0x4)
 #define JUST_X(p)           (p->flags & 0x40)
 
-#define STRING(p)           (p->flags & NCD_STRING)
-#define TSTRING(p)          (p->flags & NCD_TSTRING)
-#define BAR(p)              (p->flags & NCD_BAR)
-#define BV_Y(p)             (p->flags & NCD_BV_Y)
-#define BV_X(p)             (p->flags & NCD_BV_X)
+#define STRING(p)           ((p->flags & 0x300) == NCD_STRING)
+#define TSTRING(p)          ((p->flags & 0x300) == NCD_TSTRING)
+#define BAR(p)              ((p->flags & 0x300) == NCD_BAR)
+#define B_LR(p)             ((p->flags & 0xc00) == NCD_B_LR)
+#define B_RL(p)             ((p->flags & 0xc00) == NCD_B_RL)
+#define B_TB(p)             ((p->flags & 0xc00) == NCD_B_TB)
+#define B_BT(p)             ((p->flags & 0xc00) == NCD_B_BT)
 #define BB_Y(p)             (p->flags & NCD_BB_Y)
 #define BB_X(p)             (p->flags & NCD_BB_X)
 
@@ -95,34 +96,43 @@
                                 (FIXED_SIZE_X(p->parent) ? p->parent->size_x : \
                                  NC_WIN_X*p->parent->size_x/100))
 
-#define GET_SIZE_Y(p)       (FIXED_SIZE_Y(p) ? p->size_y : NC_PARENT_Y(p)*p->size_y/100)
-#define GET_SIZE_X(p)       (FIXED_SIZE_X(p) ? p->size_x : NC_PARENT_X(p)*p->size_x/100)
+#define GET_SIZE_Y(p)       (FIXED_SIZE_Y(p) ? p->size_y : \
+                                NC_PARENT_Y(p)*p->size_y/100)
+#define GET_SIZE_X(p)       (FIXED_SIZE_X(p) ? p->size_x : \
+                                NC_PARENT_X(p)*p->size_x/100)
 #define GET_POS_Y(p)        (FIXED_POS_Y(p) ? p->pos_y : \
                                 JUST_Y(p) ? \
                                     (BOTTOM_JUST(p) ? \
-                                         NC_PARENT_Y(p) - GET_SIZE_Y(p) - HAS_BORDER(p->parent) : \
+                                         NC_PARENT_Y(p) - GET_SIZE_Y(p) - \
+                                         HAS_BORDER(p->parent) + p->pos_y : \
                                     CENTER_JUST_Y(p) ? \
-                                         (NC_PARENT_Y(p) - GET_SIZE_Y(p))/2 : \
-                                    HAS_BORDER(p->parent)) : \
+                                         (NC_PARENT_Y(p) - GET_SIZE_Y(p))/2 \
+                                         + p->pos_y : \
+                                    HAS_BORDER(p->parent) + p->pos_y) : \
                                 NC_PARENT_Y(p)*p->pos_y/100)
 #define GET_POS_X(p)        (FIXED_POS_X(p) ? p->pos_x : \
                                 JUST_X(p) ? \
                                     (RIGHT_JUST(p) ? \
-                                         NC_PARENT_X(p) - GET_SIZE_X(p) - HAS_BORDER(p->parent) : \
+                                         NC_PARENT_X(p) - GET_SIZE_X(p) - \
+                                         HAS_BORDER(p->parent) + p->pos_x : \
                                     CENTER_JUST_X(p) ? \
-                                         (NC_PARENT_X(p) - GET_SIZE_X(p))/2 : \
-                                    HAS_BORDER(p->parent)) : \
+                                         (NC_PARENT_X(p) - GET_SIZE_X(p))/2 + \
+                                         p->pos_x : \
+                                    HAS_BORDER(p->parent) + p->pos_x) : \
                                 NC_PARENT_X(p)*p->pos_x/100)
+
+#define BOUND(a, l, u)      (a > u ? u : (a < l ? l : a))
 
 
 extern uint32_t NC_WIN_Y, NC_WIN_X;         /* Dimensions of stdscr */
-extern uint32_t NC_WIN_RES;                 /* Set in nc_update() if stdscr changed size */
+extern uint32_t NC_WIN_RES;                 /* Set in nc_update() if
+                                               stdscr changed size */
                                             /* Must be cleared manually */
 
 typedef struct nc_data {
     void *data;                 /* Pointer to data */
     size_t size;                /* Size of data */
-    uint32_t pos_y, pos_x;      /* Position of data */
+    int pos_y, pos_x;           /* Position of data */
                                     /* Presedence: fixed, justified, percent */
                                     /* Set by flags */
     uint32_t size_y, size_x;    /* Size of data */
@@ -132,7 +142,7 @@ typedef struct nc_data {
 
 typedef struct nc_window {
     WINDOW *win;                /* Ncurses window */
-    uint32_t pos_y, pos_x;      /* Position of window */
+    int pos_y, pos_x;           /* Position of window */
                                     /* Presedence: fixed, justified, percent */
                                     /* Set by flags */
     uint32_t size_y, size_x;    /* Size of window */
@@ -156,7 +166,7 @@ typedef struct nc_window {
 /*==========================================================================*/
 int ncd_init(nc_data *p, nc_window *parent,
              void *data, size_t size,
-             uint32_t pos_y, uint32_t pos_x,
+             int pos_y, int pos_x,
              uint32_t size_y, uint32_t size_x,
              uint32_t flags);
 
@@ -170,7 +180,7 @@ int ncd_init(nc_data *p, nc_window *parent,
 /*      Returns 0 on success                                                */
 /*==========================================================================*/
 int ncw_init(nc_window *p,
-             uint32_t pos_y, uint32_t pos_x,
+             int pos_y, int pos_x,
              uint32_t size_y, uint32_t size_x,
              uint32_t flags);
 
@@ -199,8 +209,8 @@ int ncw_draw(nc_window *p);
 /*      nc_window *p            Pointer to nc_window object                 */
 /*      void *data              Pointer to data                             */
 /*      size_t size             Size of data                                */
-/*      uint32_t pos_y          Y position of data                          */
-/*      uint32_t pos_x          X position of data                          */
+/*      int pos_y               Y position of data                          */
+/*      int pos_x               X position of data                          */
 /*      uint32_t size_y         Y size of data                              */
 /*      uint32_t size_x         X size of data                              */
 /*      uint32_t flags          Flags as described above                    */
@@ -208,7 +218,7 @@ int ncw_draw(nc_window *p);
 /*==========================================================================*/
 int ncw_add_data(nc_window *p,
                  void *data, size_t size,
-                 uint32_t pos_y, uint32_t pos_x,
+                 int pos_y, int pos_x,
                  uint32_t size_y, uint32_t size_x,
                  uint32_t flags);
 
