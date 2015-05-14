@@ -1,9 +1,11 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <ncurses.h>
+#include "nc_command.h"
 
-#ifndef __WINDOW_H
-#define __WINDOW_H
+#ifndef __NC_WINDOW_H
+#define __NC_WINDOW_H
+
 
 /* Flags */
 
@@ -26,102 +28,50 @@
         //  101    justified left / top
         //  110    justified right / bottom
 
-/* Flags for nc_data */
-#define NCD_STRING      (0x100)     // String type
-#define NCD_TSTRING     (0x200)     // Transparent string type
-#define NCD_BAR         (0x300)     // Bar type
-#define NCD_B_LR        (0xc00)     // Grow left to right
-#define NCD_B_RL        (0x800)     // Grow right to left
-#define NCD_B_TB        (0x400)     // Grow top to bottom
-#define NCD_B_BT        (0x000)     // Grow bottom to top
-#define NCD_BB_Y        (0x1000)    // Bracket around bar in Y
-#define NCD_BB_X        (0x2000)    // Bracket around bar in X
-
 /* Flags for nc_window */
+#define NCW_BORDER_MASK (0x300)     // Border mask
 #define NCW_BORDER_N    (0x000)     // No window border
 #define NCW_BORDER_THN  (0x100)     // Thin window border
 #define NCW_BORDER_THK  (0x200)     // Thick window border
-#define NCW_BORDER_DSH  (0x300)     // Dashed window border
+#define NCW_BORDER_CST  (0x300)     // Custom window border
 
-#define NC_MAX_DATA_SIZE    (1024)
-#define NC_MAX_ARR_LEN      (32)
+#define NCD_MAX_SIZE    (4096)
+#define NCW_MAX_ARR_LEN (32)
 
 
-#define FIXED_POS_Y(p)      ((p->flags & 0x7) == NC_FIXP_Y)
-#define CENTER_JUST_Y(p)    ((p->flags & 0x7) == NC_CENTER_Y)
-#define TOP_JUST(p)         ((p->flags & 0x7) == NC_TOP)
-#define BOTTOM_JUST(p)      ((p->flags & 0x7) == NC_BOTTOM)
 #define FIXED_SIZE_Y(p)     (p->flags & NC_FIXS_Y)
-#define FIXED_POS_X(p)      ((p->flags & 0x70) == NC_FIXP_X)
-#define CENTER_JUST_X(p)    ((p->flags & 0x70) == NC_CENTER_X)
-#define LEFT_JUST(p)        ((p->flags & 0x70) == NC_LEFT)
-#define RIGHT_JUST(p)       ((p->flags & 0x70) == NC_RIGHT)
 #define FIXED_SIZE_X(p)     (p->flags & NC_FIXS_X)
-
-#define JUST_Y(p)           (p->flags & 0x4)
+#define POS_MASK_Y          (0x07)
+#define JUST_Y(p)           (p->flags & 0x04)
+#define FIXED_POS_Y(p)      ((p->flags & POS_MASK_Y) == NC_FIXS_Y)
+#define TOP_JUST(p)         ((p->flags & POS_MASK_Y) == NC_TOP)
+#define CENTER_JUST_Y(p)    ((p->flags & POS_MASK_Y) == NC_CENTER_Y)
+#define BOTTOM_JUST(p)      ((p->flags & POS_MASK_Y) == NC_BOTTOM)
+#define POS_MASK_X          (0x70)
 #define JUST_X(p)           (p->flags & 0x40)
+#define FIXED_POS_X(p)      ((p->flags & POS_MASK_Y) == NC_FIXS_X)
+#define LEFT_JUST(p)        ((p->flags & POS_MASK_X) == NC_LEFT)
+#define CENTER_JUST_X(p)    ((p->flags & POS_MASK_X) == NC_CENTER_X)
+#define RIGHT_JUST(p)       ((p->flags & POS_MASK_X) == NC_RIGHT)
 
-#define STRING(p)           ((p->flags & 0x300) == NCD_STRING)
-#define TSTRING(p)          ((p->flags & 0x300) == NCD_TSTRING)
-#define BAR(p)              ((p->flags & 0x300) == NCD_BAR)
-#define B_LR(p)             ((p->flags & 0xc00) == NCD_B_LR)
-#define B_RL(p)             ((p->flags & 0xc00) == NCD_B_RL)
-#define B_TB(p)             ((p->flags & 0xc00) == NCD_B_TB)
-#define B_BT(p)             ((p->flags & 0xc00) == NCD_B_BT)
-#define BB_Y(p)             (p->flags & NCD_BB_Y)
-#define BB_X(p)             (p->flags & NCD_BB_X)
 
-#define BORDER_N(p)         ((p->flags & 0x300) == NCW_BORDER_N)
-#define BORDER_THN(p)       ((p->flags & 0x300) == NCW_BORDER_THN)
-#define BORDER_THK(p)       ((p->flags & 0x300) == NCW_BORDER_THK)
-#define BORDER_DSH(p)       ((p->flags & 0x300) == NCW_BORDER_DSH)
+#define GET_SIZE_Y(p, py)   (FIXED_SIZE_Y(p) ? p->size_y : py*p->size_y/100)
+#define GET_SIZE_X(p, px)   (FIXED_SIZE_X(p) ? p->size_x : px*p->size_x/100)
+#define GET_POS_Y(p, py) \
+(FIXED_POS_Y(p) ? p->pos_y : \
+JUST_Y(p) ? \
+    (BOTTOM_JUST(p) ? py - GET_SIZE_Y(p, py) + p->pos_y : \
+    (CENTER_JUST_Y(p) ? (py - GET_SIZE_Y(p, py))/2 + p->pos_y : \
+    p->pos_y)) : \
+py*p->pos_y/100)
 
-// TODO: fix getting size
-// three options:
-//  add actual_size to struct
-//      don't have to recursively calculate size every time you draw an object
-//      more memory
-//  write a recursive function
-//      for less depth wouldn't be bad
-//  only allow a depth of two
-//      simpler
-//      easier
-//      who needs more than 2?
-
-#define HAS_BORDER(p)       (p ? !BORDER_N(p) : 0)
-#define NC_PARENT_Y(p)      (p->parent == NULL ? NC_WIN_Y : \
-                                (FIXED_SIZE_Y(p->parent) ? p->parent->size_y : \
-                                 NC_WIN_Y*p->parent->size_y/100))
-#define NC_PARENT_X(p)      (p->parent == NULL ? NC_WIN_X : \
-                                (FIXED_SIZE_X(p->parent) ? p->parent->size_x : \
-                                 NC_WIN_X*p->parent->size_x/100))
-
-#define GET_SIZE_Y(p)       (FIXED_SIZE_Y(p) ? p->size_y : \
-                                NC_PARENT_Y(p)*p->size_y/100)
-#define GET_SIZE_X(p)       (FIXED_SIZE_X(p) ? p->size_x : \
-                                NC_PARENT_X(p)*p->size_x/100)
-#define GET_POS_Y(p)        (FIXED_POS_Y(p) ? p->pos_y : \
-                                JUST_Y(p) ? \
-                                    (BOTTOM_JUST(p) ? \
-                                         NC_PARENT_Y(p) - GET_SIZE_Y(p) - \
-                                         HAS_BORDER(p->parent) + p->pos_y : \
-                                    CENTER_JUST_Y(p) ? \
-                                         (NC_PARENT_Y(p) - GET_SIZE_Y(p))/2 \
-                                         + p->pos_y : \
-                                    HAS_BORDER(p->parent) + p->pos_y) : \
-                                NC_PARENT_Y(p)*p->pos_y/100)
-#define GET_POS_X(p)        (FIXED_POS_X(p) ? p->pos_x : \
-                                JUST_X(p) ? \
-                                    (RIGHT_JUST(p) ? \
-                                         NC_PARENT_X(p) - GET_SIZE_X(p) - \
-                                         HAS_BORDER(p->parent) + p->pos_x : \
-                                    CENTER_JUST_X(p) ? \
-                                         (NC_PARENT_X(p) - GET_SIZE_X(p))/2 + \
-                                         p->pos_x : \
-                                    HAS_BORDER(p->parent) + p->pos_x) : \
-                                NC_PARENT_X(p)*p->pos_x/100)
-
-#define BOUND(a, l, u)      (a > u ? u : (a < l ? l : a))
+#define GET_POS_X(p, px) \
+(FIXED_POS_X(p) ? p->pos_x : \
+JUST_X(p) ? \
+    (RIGHT_JUST(p) ? px - GET_SIZE_X(p, px) + p->pos_x : \
+    (CENTER_JUST_X(p) ? (px - GET_SIZE_X(p, px))/2 + p->pos_x : \
+    p->pos_x)) : \
+px*p->pos_x/100)
 
 
 extern uint32_t NC_WIN_Y, NC_WIN_X;         /* Dimensions of stdscr */
@@ -130,14 +80,19 @@ extern uint32_t NC_WIN_RES;                 /* Set in nc_update() if
                                             /* Must be cleared manually */
 
 typedef struct nc_data {
-    void *data;                 /* Pointer to data */
-    size_t size;                /* Size of data */
+    nc_command *cmd;            /* Pointer to nc_command object */
     int pos_y, pos_x;           /* Position of data */
                                     /* Presedence: fixed, justified, percent */
                                     /* Set by flags */
     uint32_t size_y, size_x;    /* Size of data */
-    uint32_t flags;             /* Flags as described above */
-    struct nc_window *parent;   /* Parent nc_window */
+    int apos_y, apos_x;         /* Actual position of data */
+                                    /* Calcualted when window is resized */
+    uint32_t asize_y, asize_x;  /* Actual size of data */
+    void (*draw)(void *child, WINDOW *win, char *buf);
+                                /* Pointer to draw function with child pointer
+                                   WINDOW pointer, and char buffer */
+    void *ncd_child;            /* Pointer to ncd_* struct */
+    uint8_t flags;              /* Flags as described above */
 } nc_data;
 
 typedef struct nc_window {
@@ -146,80 +101,86 @@ typedef struct nc_window {
                                     /* Presedence: fixed, justified, percent */
                                     /* Set by flags */
     uint32_t size_y, size_x;    /* Size of window */
-    uint32_t flags;             /* Flags as described above */
+    int apos_y, apos_x;         /* Actual position of data */
+                                    /* Calcualted when window is resized */
+    uint32_t asize_y, asize_x;  /* Actual size of data */
     nc_data **data;             /* Array of nc_data objects */
     size_t data_size;           /* Length of data array */
-    struct nc_window *parent;   /* Parent nc_window */
+    uint16_t flags;             /* Flags as described above */
 } nc_window;
 
 
-/*=Initializes nc_data object===============================================*/
-/*      nc_data *p      Pointer to nc_data object                           */
-/*      void *data      Pointer to data to represent                        */
-/*      size_t size     Size of data to represent                           */
-/*      uint32_t pos_y  Y position of data top left corner in percentage    */
-/*      uint32_t pos_x  X position of data top left corner in percentage    */
-/*      uint32_t size_y Y size of data in percentage                        */
-/*      uint32_t size_x X size of data in percentage                        */
-/*      uint32_t flags  Flags as described above                            */
-/*      Returns 0 on success                                                */
-/*==========================================================================*/
-int ncd_init(nc_data *p, nc_window *parent,
-             void *data, size_t size,
-             int pos_y, int pos_x,
-             uint32_t size_y, uint32_t size_x,
-             uint32_t flags);
-
 /*=Initializes nc_window object=============================================*/
-/*      nc_window *p            Pointer to nc_window object                 */
-/*      uint32_t pos_y          Y position of window                        */
-/*      uint32_t pos_x          X position of window                        */
-/*      uint32_t size_y         Y rows of window                            */
-/*      uint32_t size_x         X cols of window                            */
-/*      uint32_t flags          Flags as described above                    */
-/*      Returns 0 on success                                                */
+/* nc_window *p             nc_window pointer                               */
+/* int pos_y                Y position of window                            */
+/* int pos_x                X position of window                            */
+/*                              If position is a justification, then these  */
+/*                              values are used as offsets                  */
+/* uint32_t size_y          Y size of window (fixed / perc)                 */
+/* uint32_t size_x          X size of window (fixed / perc)                 */
+/* uint16_t flags           Flags as described above                        */
+/*                                                                          */
+/* Initializes a nc_window object. Given these values, it will also         */
+/* calculate the actual size and position values by calling                 */
+/* ncw_resize(p). Returns 0 on success and -1 on error.                     */
 /*==========================================================================*/
 int ncw_init(nc_window *p,
-             int pos_y, int pos_x,
-             uint32_t size_y, uint32_t size_x,
-             uint32_t flags);
-
+        int pos_y, int pos_x,
+        uint32_t size_y, uint32_t size_x,
+        uint16_t flags);
 
 /*=Updates every interval===================================================*/
-/*      Returns 0 if nothing was updated                                    */
-/*      Returns 1 if something was updated                                  */
-/*          Current list of variables that can be updated                   */
-/*           NC_WIN_RES     Window resized                                  */
+/* Updates the NC_WIN_Y and NC_WIN_X. If they changed, it will set          */
+/* NC_WIN_RES to indicate a window resize and return 1. Otherwise it will   */
+/* return 0.                                                                */
 /*==========================================================================*/
 int ncw_update(void);
 
 /*=Resizes nc_window object=================================================*/
-/*      nc_window *p            Pointer to nc_window object                 */
-/*      Returns 0 on success                                                */
+/* nc_window *p             nc_window pointer                               */
+/*                                                                          */
+/* Calculates and stores the actual position and size for the window        */
+/* and each nc_data object in its array. Returns 0.                         */
 /*==========================================================================*/
 int ncw_resize(nc_window *p);
 
 /*=Draws window=============================================================*/
-/*      nc_window *p            Pointer to nc_window object                 */
-/*      Returns 0 on success                                                */
+/* nc_window *p             nc_window pointer                               */
+/*                                                                          */
+/* Calls ncd_draw for each data object. It then draws its border            */
+/* last. Returns 0.                                                         */
 /*==========================================================================*/
 int ncw_draw(nc_window *p);
 
-/*=Adds a data object to window=============================================*/
-/*      nc_window *p            Pointer to nc_window object                 */
-/*      void *data              Pointer to data                             */
-/*      size_t size             Size of data                                */
-/*      int pos_y               Y position of data                          */
-/*      int pos_x               X position of data                          */
-/*      uint32_t size_y         Y size of data                              */
-/*      uint32_t size_x         X size of data                              */
-/*      uint32_t flags          Flags as described above                    */
-/*      Returns 0 on success                                                */
+/*=Initializes nc_data object===============================================*/
+/* nc_data *p               nc_data pointer                                 */
+/* const char *cmd          Command to run                                  */
+/* uint32_t period          Period to run the command in milliseconds       */
+/* int pos_y                Y position of window                            */
+/* int pos_x                X position of window                            */
+/*                              If position is a justification, then these  */
+/*                              values are used as offsets                  */
+/* uint32_t size_y          Y size of window (fixed / perc)                 */
+/* uint32_t size_x          X size of window (fixed / perc)                 */
+/* uint8_t flags            Flags as described above                        */
+/*                                                                          */
+/* Initializes a nc_data object using a nc_command object. Returns 0 on     */
+/* success and -1 on failure.                                               */
 /*==========================================================================*/
-int ncw_add_data(nc_window *p,
-                 void *data, size_t size,
-                 int pos_y, int pos_x,
-                 uint32_t size_y, uint32_t size_x,
-                 uint32_t flags);
+int ncd_init(nc_data *p,
+        const char *cmd, uint32_t period,
+        int pos_y, int pos_x,
+        uint32_t size_y, uint32_t size_x,
+        uint8_t flags);
+
+/*=Draws data===============================================================*/
+/* nc_data *p               nc_data pointer                                 */
+/* WINDOW *win              Window to draw to                               */
+/*                                                                          */
+/* Sets up the data to draw by copying the nc_command buffer to a local     */
+/* buffer to pass to the draw function. It then calls the draw function.    */
+/* Returns 0.                                                               */
+/*==========================================================================*/
+int ncd_draw(nc_data *p, WINDOW *win);
 
 #endif

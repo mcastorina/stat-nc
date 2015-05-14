@@ -60,22 +60,6 @@ int main(int argc, char **argv) {
     ncw_init(&wins[0], 0, 0, 50, 100, NCW_BORDER_THN);
     ncw_init(&wins[1], 50, 0, 50, 100, NCW_BORDER_N);
 
-    ncw_add_data(&wins[0], (void *)&data1, strlen(data1),
-                 0, 0, 1, strlen(data1),
-                 NC_BOTTOM | NC_LEFT | NC_FIXS_Y | NC_FIXS_X | NCD_STRING);
-    ncw_add_data(&wins[1], (void *)&data4, strlen(data4),
-                 0, 0, 18, 29,
-                 NC_LEFT | NC_TOP | NC_FIXS_X | NC_FIXS_Y | NCD_STRING);
-    ncw_add_data(&wins[1], (void *)&data3, strlen(data3),
-                 0, 0, 6, 49,
-                 NC_CENTER_Y | NC_CENTER_X | NC_FIXS_X | NC_FIXS_Y | NCD_TSTRING);
-    ncw_add_data(&wins[0], (void *)&data5, 100,
-                 0, 0, 100, 5,
-                 NCD_BAR | NCD_B_BT | NC_RIGHT | NC_BOTTOM | NC_FIXS_X);
-    ncw_add_data(&wins[0], (void *)&data6, 100,
-                 0, -6, 100, 5,
-                 NCD_BAR | NCD_B_BT | NC_RIGHT | NC_BOTTOM | NC_FIXS_X | NCD_BB_Y | NCD_BB_X);
-
     timeout(20);    // ~50 Hz
     int count = 0;
     while (true) {
