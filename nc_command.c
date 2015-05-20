@@ -1,12 +1,12 @@
+#define _DEFAULT_SOURCE
+
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include "nc_command.h"
-
-uint8_t ncc_end;
 
 void ncc_run(void *);
 
@@ -24,7 +24,7 @@ int ncc_init(nc_command *p, const char *cmd, uint32_t period) {
 
     p->cmd = cmd;
     p->period = period;
-    ncc_end = 0;
+    p->ncc_end = !period;
 
     if (pthread_create(&p->thread, NULL, (void *)ncc_run, (void *)p)) {
         fprintf(stderr, "Error creating thread.\n");
@@ -44,7 +44,7 @@ ncc_init_err0:
 }
 int ncc_destroy(nc_command *p) {
     /* Notify thread to stop */
-    ncc_end = 1;
+    p->ncc_end = 1;
 
     /* Wait for thread */
     pthread_join(p->thread, NULL);
@@ -60,10 +60,8 @@ int ncc_destroy(nc_command *p) {
 }
 int ncc_get(nc_command *p, char *dest) {
     /* Acquire lock */
-    if (sem_wait(p->lock)) {
-        fprintf(stderr, "Error getting lock.\n");
+    if (sem_trywait(p->lock))
         return -1;
-    }
 
     /* Copy data to dest */
     strncpy(dest, p->buffer, NCC_BUFFER_SIZE);
@@ -74,12 +72,57 @@ int ncc_get(nc_command *p, char *dest) {
 }
 
 void ncc_run(void *ptr) {
+    char buf[NCC_BUFFER_SIZE], *dbl_buf, *tmp;
     nc_command *p = (nc_command *)ptr;
+    FILE *fp;
 
-    /* Acquire lock */
+    dbl_buf = buf;
+    do {
+        /* Run command */
+        fp = popen(p->cmd, "r");
 
-    /* Run command via popen */
+        if (fp == NULL) {
+            fprintf(stderr, "Failed to run command\n");
+            continue;
+        }
 
-    /* Release lock */
+        /* Copy output to second buffer */
+        fread(dbl_buf, NCC_BUFFER_SIZE, 1, fp);
+
+        /* Acquire lock */
+        if (sem_wait(p->lock)) {
+            fprintf(stderr, "Error getting lock.\n");
+            continue;
+        }
+
+        /* Swap double buffer */
+        tmp = p->buffer;
+        p->buffer = dbl_buf;
+        dbl_buf = tmp;
+
+        /* Release lock */
+        sem_post(p->lock);
+
+        /* Close pipe */
+        pclose(fp);
+        fp = NULL;
+
+        /* Sleep */
+        usleep(p->period * 1000);
+    }
+    while (!p->ncc_end);
+
+    /* Make sure p->buffer points to valid memory */
+    if (p->buffer == buf) {
+        /* Acquire lock */
+        while (sem_wait(p->lock));
+
+        /* Copy data to buffer in heap */
+        strncpy(dbl_buf, buf, NCC_BUFFER_SIZE);
+        p->buffer = dbl_buf;
+
+        /* Release lock */
+        sem_post(p->lock);
+    }
 }
 

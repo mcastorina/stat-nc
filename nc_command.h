@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdint.h>
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -14,6 +15,7 @@ typedef struct nc_command {
     char *buffer;               /* Buffer to store output */
     pthread_t thread;           /* Thread identifier */
     sem_t *lock;                /* Synchronization for buffer */
+    uint8_t ncc_end;            /* Used to notify the thread to stop */
 } nc_command;
 
 /*=Initializes nc_command object============================================*/
@@ -39,9 +41,10 @@ int ncc_destroy(nc_command *p);
 /* nc_command *p            nc_command pointer                              */
 /* char *dest               Buffer to put output                            */
 /*                                                                          */
-/* Copies from the nc_command buffer to the destination. It first acquires  */
-/* the lock to ensure the thread isn't writing data as we read it. Note     */
-/* that this function can block. Returns 0 on success and -1 on failure.    */
+/* Tries to copy from the nc_command buffer to the destination. It          */
+/* attempts to acquires the lock to ensure the thread isn't writing data    */
+/* as we read it. This function will not block. Returns 0 on success and    */
+/* -1 on failure.                                                           */
 /*==========================================================================*/
 int ncc_get(nc_command *p, char *dest);
 

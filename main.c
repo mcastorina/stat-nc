@@ -1,4 +1,4 @@
-#define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 
 #include <locale.h>
 #include <stdlib.h>
@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "nc_window.h"
+#include "ncd_string.h"
 
 #define EXIT   (-1)
 
@@ -21,47 +22,37 @@ int process_input(char);
 int main(int argc, char **argv) {
     int i;
 
-    char *data1 = "Hello, world!";
-    char *data2 = "Goodbye      ";
-    char *data3 = "\
-    _             _     _     _                  \n\
-   / \\   _ __ ___| |__ | |   (_)_ __  _   ___  __\n\
-  / _ \\ | '__/ __| '_ \\| |   | | '_ \\| | | \\ \\/ /\n\
- / ___ \\| | | (__| | | | |___| | | | | |_| |>  < \n\
-/_/   \\_\\_|  \\___|_| |_|_____|_|_| |_|\\__,_/_/\\_\\";
-
-    char *data4 = "\
-              +              \n\
-              #              \n\
-             ###             \n\
-            #####            \n\
-            ######           \n\
-           ; #####;          \n\
-          +##.#####          \n\
-         +##########         \n\
-        #############;       \n\
-       ###############+      \n\
-      #######   #######      \n\
-    .######;     ;###;`\\\".   \n\
-   .#######;     ;#####.     \n\
-   #########.   .########`   \n\
-  ######'           '######  \n\
- ;####                 ####; \n\
- ##'                     '## \n\
-#'                         `#";
-    int data5 = 100;
-    int data6 = 100;
     int num_win = 2;
     nc_window wins[num_win];
+    nc_data data1, data2, data3, data4;
 
     setlocale(LC_ALL, "");
     start_curses();
 
     ncw_init(&wins[0], 0, 0, 50, 100, NCW_BORDER_THN);
     ncw_init(&wins[1], 50, 0, 50, 100, NCW_BORDER_N);
+    ncd_init(&data1, "date", 1000, 0, 0, 0, 0, NC_LEFT | NC_TOP);
+    ncd_init(&data2, "./cpu", 500, 1, 0, 6, 26, NC_LEFT | NC_TOP | NC_FIXS_X | NC_FIXS_Y);
+    ncd_init(&data3, "cat arch.txt", 0, 0, 0, 18, 29,
+            NC_CENTER_X | NC_CENTER_Y | NC_FIXS_X | NC_FIXS_Y);
+    ncd_init(&data4, "upower -i /org/freedesktop/UPower/devices/battery_BAT0 |\
+                      grep percentage | awk 'NF>1{print \"Battery:\",$NF}'",
+                      5000, -1, 0, 0, 17, NC_RIGHT | NC_BOTTOM | NC_FIXS_X);
+    ncd_string_init(&data1, 0);
+    ncd_string_init(&data2, 0);
+    ncd_string_init(&data3, 0);
+    ncd_string_init(&data4, 0);
+    ncw_add_data(&wins[0], &data1);
+    ncw_add_data(&wins[0], &data2);
+    ncw_add_data(&wins[1], &data3);
+    ncw_add_data(&wins[0], &data4);
+
+    ncw_update();
+    NC_WIN_RES &= 0;
+    ncw_resize(&wins[0]);
+    ncw_resize(&wins[1]);
 
     timeout(20);    // ~50 Hz
-    int count = 0;
     while (true) {
 
         if (ncw_update()) {
@@ -83,15 +74,6 @@ int main(int argc, char **argv) {
             int ret = process_input(ch);
             if (ret == EXIT)
                 break;
-        }
-
-        if (count++ > 50) {
-            char *tmp = data1;
-            data1 = data2;
-            data2 = tmp;
-            count = 0;
-            data5 = (data5 + 5)%105;
-            data6 = (data6 + 10)%110;
         }
     }
     return 0;

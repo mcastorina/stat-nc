@@ -38,6 +38,10 @@
 #define NCD_MAX_SIZE    (4096)
 #define NCW_MAX_ARR_LEN (32)
 
+#define BORDER_N(p)         ((p->flags & NCW_BORDER_MASK) == NCW_BORDER_N)
+#define BORDER_THN(p)       ((p->flags & NCW_BORDER_MASK) == NCW_BORDER_THN)
+#define BORDER_THK(p)       ((p->flags & NCW_BORDER_MASK) == NCW_BORDER_THK)
+#define BORDER_CST(p)       ((p->flags & NCW_BORDER_MASK) == NCW_BORDER_CST)
 
 #define FIXED_SIZE_Y(p)     (p->flags & NC_FIXS_Y)
 #define FIXED_SIZE_X(p)     (p->flags & NC_FIXS_X)
@@ -60,16 +64,16 @@
 #define GET_POS_Y(p, py) \
 (FIXED_POS_Y(p) ? p->pos_y : \
 JUST_Y(p) ? \
-    (BOTTOM_JUST(p) ? py - GET_SIZE_Y(p, py) + p->pos_y : \
-    (CENTER_JUST_Y(p) ? (py - GET_SIZE_Y(p, py))/2 + p->pos_y : \
+    (BOTTOM_JUST(p) ? py - (int)GET_SIZE_Y(p, py) + p->pos_y : \
+    (CENTER_JUST_Y(p) ? (py - (int)GET_SIZE_Y(p, py))/2 + p->pos_y : \
     p->pos_y)) : \
 py*p->pos_y/100)
 
 #define GET_POS_X(p, px) \
 (FIXED_POS_X(p) ? p->pos_x : \
 JUST_X(p) ? \
-    (RIGHT_JUST(p) ? px - GET_SIZE_X(p, px) + p->pos_x : \
-    (CENTER_JUST_X(p) ? (px - GET_SIZE_X(p, px))/2 + p->pos_x : \
+    (RIGHT_JUST(p) ? px - (int)GET_SIZE_X(p, px) + p->pos_x : \
+    (CENTER_JUST_X(p) ? (px - (int)GET_SIZE_X(p, px))/2 + p->pos_x : \
     p->pos_x)) : \
 px*p->pos_x/100)
 
@@ -88,11 +92,11 @@ typedef struct nc_data {
     int apos_y, apos_x;         /* Actual position of data */
                                     /* Calcualted when window is resized */
     uint32_t asize_y, asize_x;  /* Actual size of data */
-    void (*draw)(void *child, WINDOW *win, char *buf);
-                                /* Pointer to draw function with child pointer
+    void (*draw)(struct nc_data *self, WINDOW *win, char *buf);
+                                /* Pointer to draw function with self pointer,
                                    WINDOW pointer, and char buffer */
-    void *ncd_child;            /* Pointer to ncd_* struct */
     uint8_t flags;              /* Flags as described above */
+    uint8_t child_flags;        /* Flags reserved for child */
 } nc_data;
 
 typedef struct nc_window {
@@ -143,6 +147,15 @@ int ncw_update(void);
 /* and each nc_data object in its array. Returns 0.                         */
 /*==========================================================================*/
 int ncw_resize(nc_window *p);
+
+/*=Adds data object to nc_window============================================*/
+/* nc_window *p             nc_window pointer                               */
+/* nc_data *d               nc_data pointer                                 */
+/*                                                                          */
+/* Adds an nc_data object to nc_window's data array. Returns 0 on success   */
+/* and -1 on failure.                                                       */
+/*==========================================================================*/
+int ncw_add_data(nc_window *p, nc_data *d);
 
 /*=Draws window=============================================================*/
 /* nc_window *p             nc_window pointer                               */
